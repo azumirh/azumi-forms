@@ -4,12 +4,11 @@ import Head from 'next/head'
 import { supabase } from '../../lib/supabase'
 import { Form, Question } from '../../lib/types'
 
-const DARK = '#031D38'
 const HDR = `linear-gradient(135deg,#031D38 0%,#052E5A 60%,#0A3F7A 100%)`
 
 const AzumiLogo = () => (
-  <div style={{ display:'flex', alignItems:'center', gap:9, flexShrink:0 }}>
-    <svg width="28" height="22" viewBox="0 0 120 96" fill="none">
+  <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+    <svg width="26" height="20" viewBox="0 0 120 96" fill="none">
       <defs>
         <linearGradient id="lg2" x1="0" y1="0" x2="120" y2="96" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#4A90D9"/><stop offset="100%" stopColor="#6EB3F7"/>
@@ -18,8 +17,8 @@ const AzumiLogo = () => (
       <circle cx="44" cy="48" r="34" fill="url(#lg2)" opacity=".95"/>
       <circle cx="76" cy="48" r="34" fill="url(#lg2)" opacity=".7"/>
     </svg>
-    <span style={{ fontFamily:'Poppins,sans-serif', fontWeight:600, fontSize:20, color:'#fff' }}>azumi</span>
-    <span style={{ fontFamily:'Poppins,sans-serif', fontStyle:'italic', fontWeight:400, fontSize:20, color:'#93C5FD' }}>RH</span>
+    <span style={{ fontFamily:'Poppins,sans-serif', fontWeight:600, fontSize:18, color:'#fff' }}>azumi</span>
+    <span style={{ fontFamily:'Poppins,sans-serif', fontStyle:'italic', fontWeight:400, fontSize:18, color:'#93C5FD' }}>RH</span>
   </div>
 )
 
@@ -27,7 +26,7 @@ export default function FormPage() {
   const router = useRouter()
   const { id } = router.query as { id: string }
 
-  const [form, setForm] = useState<Form|null>(null)
+  const [form, setForm] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [expired, setExpired] = useState(false)
   const [notFound, setNotFound] = useState(false)
@@ -73,7 +72,7 @@ export default function FormPage() {
     if (existing) { setCpfError('Este CPF já respondeu este formulário.'); return }
 
     const missing: string[] = []
-    form.questions.forEach(q => { if (q.required && !answers[q.id]?.trim()) missing.push(q.id) })
+    form.questions.forEach((q: any) => { if (q.required && !answers[q.id]?.trim()) missing.push(q.id) })
     if (missing.length) { setErrors(missing); return }
     setErrors([])
     setSubmitting(true)
@@ -84,7 +83,7 @@ export default function FormPage() {
       _empresa: { question:'Empresa', answer: identity.empresa },
       _filial: { question:'Filial', answer: identity.filial },
     }
-    form.questions.forEach(q => { answersPayload[q.id] = { question: q.text, answer: answers[q.id]||'' } })
+    form.questions.forEach((q: any) => { answersPayload[q.id] = { question: q.text, answer: answers[q.id]||'' } })
 
     await fetch('/api/submit', {
       method:'POST',
@@ -95,18 +94,24 @@ export default function FormPage() {
     setSubmitted(true)
   }
 
+  const bgColor = form?.bg_color || '#031D38'
+  const headerGradient = `linear-gradient(135deg, ${bgColor} 0%, #052E5A 60%, #0A3F7A 100%)`
+
   const Header = () => (
-    <div style={{ background:HDR, borderRadius:'12px 12px 0 0', padding:'22px 28px', position:'relative', overflow:'hidden' }}>
+    <div style={{ background: headerGradient, borderRadius:'12px 12px 0 0', padding:'18px 24px', position:'relative', overflow:'hidden' }}>
       <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse 50% 80% at 100% 50%,rgba(74,144,217,.15) 0%,transparent 60%)', pointerEvents:'none' }}/>
       <div style={{ position:'relative', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <div>
-          <div style={{ fontSize:20, fontWeight:800, color:'#fff', fontFamily:'Sora,sans-serif', marginBottom:3 }}>{form?.name}</div>
-          <div style={{ fontSize:11, color:'rgba(147,197,253,.75)', fontFamily:'monospace', letterSpacing:'.1em', textTransform:'uppercase' }}>{form?.client}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+          {form?.logo_url && (
+            <img src={form.logo_url} alt="Logo cliente"
+              style={{ height:44, maxWidth:100, borderRadius:6, objectFit:'contain', background:'rgba(255,255,255,.12)', padding:'4px 8px' }}/>
+          )}
+          <div>
+            <div style={{ fontSize:20, fontWeight:800, color:'#fff', fontFamily:'Sora,sans-serif', lineHeight:1.2 }}>{form?.name}</div>
+            <div style={{ fontSize:11, color:'rgba(147,197,253,.75)', fontFamily:'monospace', letterSpacing:'.1em', textTransform:'uppercase', marginTop:2 }}>{form?.client}</div>
+          </div>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          {(form as any)?.logo_url && <img src={(form as any).logo_url} alt="Logo cliente" style={{ height:36, borderRadius:6, objectFit:'contain', background:'rgba(255,255,255,.1)', padding:4 }}/>}
-          <AzumiLogo/>
-        </div>
+        <AzumiLogo/>
       </div>
     </div>
   )
@@ -119,16 +124,16 @@ export default function FormPage() {
 
   if (notFound) return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f0f2f7' }}>
-      <div style={{ textAlign:'center', color:'#778082' }}>
+      <div style={{ textAlign:'center' }}>
         <div style={{ fontSize:16, fontWeight:700, color:'#222' }}>Formulário não encontrado</div>
-        <div style={{ fontSize:13, marginTop:6 }}>Verifique o link com a Azumi RH.</div>
+        <div style={{ fontSize:13, marginTop:6, color:'#778082' }}>Verifique o link com a Azumi RH.</div>
       </div>
     </div>
   )
 
   if (expired) return (
     <div style={{ minHeight:'100vh', background:'#f0f2f7', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ maxWidth:520, width:'100%', margin:'0 16px' }}>
+      <div style={{ maxWidth:540, width:'100%', margin:'0 16px' }}>
         <Header/>
         <div style={{ background:'#fff', borderRadius:'0 0 12px 12px', padding:'32px 28px', textAlign:'center' }}>
           <div style={{ fontSize:16, fontWeight:700, marginBottom:6 }}>Formulário encerrado</div>
@@ -141,11 +146,11 @@ export default function FormPage() {
   if (submitted) return (
     <div style={{ minHeight:'100vh', background:'#f0f2f7', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <Head><title>Obrigado · Azumi RH</title></Head>
-      <div style={{ maxWidth:520, width:'100%', margin:'0 16px' }}>
+      <div style={{ maxWidth:540, width:'100%', margin:'0 16px' }}>
         <Header/>
         <div style={{ background:'#fff', borderRadius:'0 0 12px 12px', padding:'40px 28px', textAlign:'center' }}>
-          <div style={{ width:56, height:56, borderRadius:'50%', background:'#e9faf2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <div style={{ width:60, height:60, borderRadius:'50%', background:'#e9faf2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <div style={{ fontSize:18, fontWeight:700, marginBottom:8 }}>Resposta enviada com sucesso</div>
           <div style={{ fontSize:13, color:'#778082', lineHeight:1.7 }}>Obrigado. Suas respostas foram registradas pela <strong>Azumi RH</strong>.</div>
@@ -159,23 +164,32 @@ export default function FormPage() {
     <div style={{ minHeight:'100vh', background:'#f0f2f7', padding:'24px 16px' }}>
       <Head><title>{form?.name} · Azumi RH</title></Head>
 
-      {showWelcome && (form as any)?.welcome_message && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(3,29,56,.75)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:16 }}>
-          <div style={{ background:'#fff', borderRadius:16, maxWidth:440, width:'100%', overflow:'hidden', boxShadow:'0 8px 40px rgba(0,0,0,.25)' }}>
-            <div style={{ background:HDR, padding:'22px 28px' }}>
+      {/* WELCOME POPUP */}
+      {showWelcome && form?.welcome_message && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(3,29,56,.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:16 }}>
+          <div style={{ background:'#fff', borderRadius:16, maxWidth:460, width:'100%', overflow:'hidden', boxShadow:'0 8px 40px rgba(0,0,0,.3)' }}>
+            {/* Topo azul com logos */}
+            <div style={{ background: headerGradient, padding:'24px 28px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                {form.logo_url && (
+                  <img src={form.logo_url} alt="Logo cliente"
+                    style={{ height:40, maxWidth:90, borderRadius:6, objectFit:'contain', background:'rgba(255,255,255,.15)', padding:'4px 8px' }}/>
+                )}
+              </div>
               <AzumiLogo/>
-              {(form as any).logo_url && <img src={(form as any).logo_url} alt="Logo" style={{ height:32, marginTop:12, borderRadius:4, objectFit:'contain' as const }}/>}
             </div>
-            <div style={{ padding:'24px 28px' }}>
-              <div style={{ fontSize:15, fontWeight:700, color:'#222', marginBottom:10 }}>Bem-vindo</div>
-              <div style={{ fontSize:13, color:'#555', lineHeight:1.7, marginBottom:24 }}>{(form as any).welcome_message}</div>
-              {form?.expiry && (
-                <div style={{ background:'#fff8e1', border:'1px solid #ffd54f', borderRadius:8, padding:'8px 12px', fontSize:11, color:'#7c6200', marginBottom:16 }}>
-                  Disponível até {new Date(form.expiry+'T00:00:00').toLocaleDateString('pt-BR')}
+            {/* Corpo branco */}
+            <div style={{ padding:'28px 28px 24px', textAlign:'center' }}>
+              <div style={{ fontSize:28, marginBottom:8 }}>👋</div>
+              <div style={{ fontSize:18, fontWeight:700, color:'#031D38', marginBottom:10 }}>Bem-vindo(a)!</div>
+              <div style={{ fontSize:13, color:'#555', lineHeight:1.75, marginBottom:20 }}>{form.welcome_message}</div>
+              {form.expiry && (
+                <div style={{ background:'#fff0f0', border:'1.5px solid #ffb3b3', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#b91c1c', fontWeight:600, marginBottom:20 }}>
+                  Prazo para respostas: até {new Date(form.expiry+'T00:00:00').toLocaleDateString('pt-BR')}
                 </div>
               )}
               <button onClick={() => setShowWelcome(false)}
-                style={{ width:'100%', padding:13, background:HDR, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                style={{ width:'100%', padding:13, background: headerGradient, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
                 Começar
               </button>
             </div>
@@ -183,28 +197,34 @@ export default function FormPage() {
         </div>
       )}
 
-      <div style={{ maxWidth:600, margin:'0 auto' }}>
+      <div style={{ maxWidth:620, margin:'0 auto' }}>
         <Header/>
         <div style={{ background:'#fff', borderRadius:'0 0 12px 12px', border:'1px solid #EDEDED', borderTop:'none', padding:'24px 28px' }}>
 
           {form?.description && (
-            <div style={{ fontSize:13, color:'#778082', marginBottom:20, lineHeight:1.7 }}>{form.description}</div>
+            <div style={{ fontSize:13, color:'#555', marginBottom:22, lineHeight:1.75, background:'#f8f9fb', borderRadius:8, padding:'12px 14px', borderLeft:'3px solid #3B82F6' }}>
+              {form.description}
+            </div>
           )}
 
+          {/* IDENTIFICAÇÃO */}
           <div style={{ background:'#f8f9fb', borderRadius:10, padding:16, marginBottom:24, border:'1px solid #EDEDED' }}>
-            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#034C8B', marginBottom:12 }}>Identificação</div>
+            <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase' as const, color:'#034C8B', marginBottom:14, display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ display:'inline-block', width:3, height:13, borderRadius:100, background:'linear-gradient(#034C8B,#3B82F6)' }}></span>
+              Identificação
+            </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
               <div>
                 <label style={{ fontSize:11, color:'#778082', display:'block', marginBottom:4 }}>CPF *</label>
                 <input value={identity.cpf} onChange={e => setIdentity(p => ({ ...p, cpf: formatCPF(e.target.value) }))}
                   placeholder="000.000.000-00"
-                  style={{ width:'100%', padding:'9px 11px', border:'1.5px solid #EDEDED', borderRadius:8, fontSize:13, fontFamily:'inherit' }}/>
+                  style={{ width:'100%', padding:'9px 11px', border:'1.5px solid #EDEDED', borderRadius:8, fontSize:13, fontFamily:'inherit', outline:'none' }}/>
               </div>
               <div>
                 <label style={{ fontSize:11, color:'#778082', display:'block', marginBottom:4 }}>Nome completo *</label>
                 <input value={identity.nome} onChange={e => setIdentity(p => ({ ...p, nome: e.target.value }))}
                   placeholder="Seu nome"
-                  style={{ width:'100%', padding:'9px 11px', border:'1.5px solid #EDEDED', borderRadius:8, fontSize:13, fontFamily:'inherit' }}/>
+                  style={{ width:'100%', padding:'9px 11px', border:'1.5px solid #EDEDED', borderRadius:8, fontSize:13, fontFamily:'inherit', outline:'none' }}/>
               </div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
@@ -212,19 +232,20 @@ export default function FormPage() {
                 <label style={{ fontSize:11, color:'#778082', display:'block', marginBottom:4 }}>Empresa *</label>
                 <input value={identity.empresa} onChange={e => setIdentity(p => ({ ...p, empresa: e.target.value }))}
                   placeholder="Nome da empresa"
-                  style={{ width:'100%', padding:'9px 11px', border:'1.5px solid #EDEDED', borderRadius:8, fontSize:13, fontFamily:'inherit' }}/>
+                  style={{ width:'100%', padding:'9px 11px', border:'1.5px solid #EDEDED', borderRadius:8, fontSize:13, fontFamily:'inherit', outline:'none' }}/>
               </div>
               <div>
                 <label style={{ fontSize:11, color:'#778082', display:'block', marginBottom:4 }}>Filial</label>
                 <input value={identity.filial} onChange={e => setIdentity(p => ({ ...p, filial: e.target.value }))}
                   placeholder="Filial (se houver)"
-                  style={{ width:'100%', padding:'9px 11px', border:'1.5px solid #EDEDED', borderRadius:8, fontSize:13, fontFamily:'inherit' }}/>
+                  style={{ width:'100%', padding:'9px 11px', border:'1.5px solid #EDEDED', borderRadius:8, fontSize:13, fontFamily:'inherit', outline:'none' }}/>
               </div>
             </div>
-            {cpfError && <div style={{ color:'#b91c1c', fontSize:12, marginTop:8, fontWeight:600 }}>{cpfError}</div>}
+            {cpfError && <div style={{ color:'#b91c1c', fontSize:12, marginTop:10, fontWeight:600, background:'#fef2f2', borderRadius:6, padding:'6px 10px' }}>{cpfError}</div>}
           </div>
 
-          {form?.questions.map((q, i) => (
+          {/* PERGUNTAS */}
+          {form?.questions.map((q: any, i: number) => (
             <QuestionRenderer key={q.id} q={q} index={i} value={answers[q.id]||''} onChange={v=>setAnswer(q.id,v)} hasError={errors.includes(q.id)}/>
           ))}
 
@@ -235,7 +256,7 @@ export default function FormPage() {
           )}
 
           <button onClick={handleSubmit} disabled={submitting}
-            style={{ width:'100%', padding:14, background:HDR, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:700, cursor:submitting?'not-allowed':'pointer', opacity:submitting?.7:1, fontFamily:'inherit', marginTop:8 }}>
+            style={{ width:'100%', padding:14, background: headerGradient, color:'#fff', border:'none', borderRadius:10, fontSize:14, fontWeight:700, cursor:submitting?'not-allowed':'pointer', opacity:submitting?0.7:1, fontFamily:'inherit', marginTop:8 }}>
             {submitting ? 'Enviando...' : 'Enviar respostas'}
           </button>
 
@@ -248,7 +269,7 @@ export default function FormPage() {
   )
 }
 
-function QuestionRenderer({ q, index, value, onChange, hasError }: { q:Question; index:number; value:string; onChange:(v:string)=>void; hasError:boolean }) {
+function QuestionRenderer({ q, index, value, onChange, hasError }: { q:any; index:number; value:string; onChange:(v:string)=>void; hasError:boolean }) {
   const border = (sel: boolean) => `1.5px solid ${sel?'#3B82F6':hasError?'#fecaca':'#EDEDED'}`
   const btnBase: React.CSSProperties = { cursor:'pointer', fontFamily:'inherit', transition:'all .12s', border:'none' }
 
@@ -259,12 +280,12 @@ function QuestionRenderer({ q, index, value, onChange, hasError }: { q:Question;
         <span>{q.text}</span>
         {q.required && <span style={{ color:'#e24b4a' }}>*</span>}
       </div>
-      {hasError && <div style={{ fontSize:11, color:'#b91c1c', marginBottom:6 }}>Campo obrigatório</div>}
+      {hasError && <div style={{ fontSize:11, color:'#b91c1c', marginBottom:6, background:'#fef2f2', borderRadius:6, padding:'4px 8px' }}>Campo obrigatório</div>}
       {q.type==='text' && (
         <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder="Sua resposta..."
           style={{ width:'100%', padding:'10px 12px', border:border(false), borderRadius:8, fontSize:13, fontFamily:'inherit', minHeight:80, resize:'vertical', outline:'none' }}/>
       )}
-      {q.type==='mc' && q.options?.map(opt => (
+      {q.type==='mc' && q.options?.map((opt: string) => (
         <button key={opt} onClick={()=>onChange(opt)}
           style={{ ...btnBase, display:'block', width:'100%', textAlign:'left', padding:'10px 14px', border:border(value===opt), borderRadius:8, fontSize:13, background:value===opt?'#eff6ff':'#fff', color:value===opt?'#034C8B':'#222', marginBottom:6, fontWeight:value===opt?600:400 }}>
           {opt}
@@ -284,7 +305,7 @@ function QuestionRenderer({ q, index, value, onChange, hasError }: { q:Question;
         <div style={{ display:'flex', gap:8 }}>
           {['Sim','Não'].map(opt => (
             <button key={opt} onClick={()=>onChange(opt)}
-              style={{ ...btnBase, flex:1, padding:10, border:border(value===opt), borderRadius:8, fontSize:14, fontWeight:700, background:value===opt?'#eff6ff':'#fff', color:value===opt?'#034C8B':'#222' }}>
+              style={{ ...btnBase, flex:1, padding:10, border:border(value===opt), borderRadius:8, fontSize:14, fontWeight:700, background:value===opt?'#eff6ff':'#fff', color:value===opt?'#034C8B':'#222', textAlign:'center' }}>
               {opt}
             </button>
           ))}
