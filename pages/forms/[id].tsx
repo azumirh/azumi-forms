@@ -85,13 +85,19 @@ export default function FormPage() {
     }
     form.questions.forEach((q: any) => { answersPayload[q.id] = { question: q.text, answer: answers[q.id]||'' } })
 
-    await fetch('/api/submit', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ form_id: form.id, form_name: form.name, client: form.client, answers: answersPayload, cpf: rawCPF }),
-    })
-    setSubmitting(false)
-    setSubmitted(true)
+    const submitRes = await fetch('/api/submit', {
+  method:'POST',
+  headers:{ 'Content-Type':'application/json' },
+  body: JSON.stringify({ form_id: form.id, form_name: form.name, client: form.client, answers: answersPayload, cpf: rawCPF }),
+})
+const submitData = await submitRes.json()
+if (submitRes.status === 409 || submitData.error === 'CPF_DUPLICADO') {
+  setSubmitting(false)
+  setCpfError('Este CPF já respondeu este formulário.')
+  return
+}
+setSubmitting(false)
+setSubmitted(true)
   }
 
   const bgColor = form?.bg_color || '#031D38'
