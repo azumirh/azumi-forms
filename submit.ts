@@ -10,6 +10,7 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
   const { form_id, form_name, client, answers, cpf } = req.body
   if (!form_id || !answers) return res.status(400).json({ error: 'Dados incompletos' })
 
@@ -39,12 +40,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   </div>
 </div></body></html>`
 
-  await resend.emails.send({
-    from: 'Azumi Forms <forms@azumirh.com.br>',
-    to: process.env.NOTIFY_EMAIL || 'contato@azumirh.com.br',
-    subject: `Nova resposta: ${form_name} (${client})`,
-    html: emailHtml,
-  })
+  try {
+    const { data, error: emailError } = await resend.emails.send({
+      from: 'Azumi Forms <forms@azumirh.com.br>',
+      to: process.env.NOTIFY_EMAIL || 'contato@azumirh.com.br',
+      subject: `Nova resposta: ${form_name} (${client})`,
+      html: emailHtml,
+    })
+    if (emailError) {
+      console.error('Resend error:', emailError)
+      return res.status(200).json({ success: true, email_error: emailError })
+    }
+    console.log('Email sent:', data)
+  } catch (e) {
+    console.error('Email exception:', e)
+  }
 
   return res.status(200).json({ success: true })
 }
