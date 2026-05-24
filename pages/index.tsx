@@ -212,10 +212,15 @@ export default function Admin() {
               <div style={{ fontSize:11, color:'#778082', marginTop:4 }}>Em caso de dúvidas, procure a Azumi RH ou seu gestor.</div>
             </div>
             <div style={{ padding:'0 24px 20px', display:'flex', gap:8 }}>
-              <button onClick={() => { navigator.clipboard.writeText(`${baseUrl}/forms/${showQR.id}`); showToast('Link copiado!'); }}
+             <button onClick={() => { navigator.clipboard.writeText(`${baseUrl}/forms/${showQR.id}`); showToast('Link copiado!'); }}
                 style={{ flex:1, padding:'9px', background:'#e9f2ff', color:'#034C8B', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 Copiar link
               </button>
+              <a href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(baseUrl+'/forms/'+showQR.id)}&format=png`}
+                download={`qrcode-${showQR.name}.png`}
+                style={{ flex:1, padding:'9px', background:'#f3f0ff', color:'#5B21B6', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', textDecoration:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                Baixar PNG
+              </a>
               <button onClick={() => setShowQR(null)}
                 style={{ flex:1, padding:'9px', background:DARK, color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 Fechar
