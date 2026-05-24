@@ -189,8 +189,7 @@ export default function Admin() {
 
       {/* QR MODAL */}
       {showQR && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setShowQR(null)}>
-          <div style={{ background:'#fff', borderRadius:16, overflow:'hidden', maxWidth:380, width:'100%', margin:16 }} onClick={e => e.stopPropagation()}>
+        <div id="qr-card" style={{ background:'#fff', borderRadius:16, overflow:'hidden', maxWidth:380, width:'100%', margin:16 }} onClick={e => e.stopPropagation()}>
             <div style={{ background:HDR, padding:'18px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <div>
                 <div style={{ color:'#fff', fontWeight:700, fontSize:15 }}>{showQR.name}</div>
@@ -212,22 +211,30 @@ export default function Admin() {
               <div style={{ fontSize:11, color:'#778082', marginTop:4 }}>Em caso de dúvidas, procure a Azumi RH ou seu gestor.</div>
             </div>
             <div style={{ padding:'0 24px 20px', display:'flex', gap:8 }}>
-             <button onClick={() => { navigator.clipboard.writeText(`${baseUrl}/forms/${showQR.id}`); showToast('Link copiado!'); }}
+              <button onClick={() => { navigator.clipboard.writeText(`${baseUrl}/forms/${showQR.id}`); showToast('Link copiado!'); }}
                 style={{ flex:1, padding:'9px', background:'#e9f2ff', color:'#034C8B', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 Copiar link
               </button>
-              <a href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(baseUrl+'/forms/'+showQR.id)}&format=png`}
-                download={`qrcode-${showQR.name}.png`}
-                style={{ flex:1, padding:'9px', background:'#f3f0ff', color:'#5B21B6', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', textDecoration:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                Baixar PNG
-              </a>
+              <button onClick={async () => {
+                const el = document.getElementById('qr-card')
+                if (!el) return
+                const { default: html2canvas } = await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js' as any)
+                const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' })
+                const link = document.createElement('a')
+                link.download = `card-${showQR.name}.png`
+                link.href = canvas.toDataURL('image/png')
+                link.click()
+                showToast('Card baixado!')
+              }}
+                style={{ flex:1, padding:'9px', background:'#f3f0ff', color:'#5B21B6', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                Baixar card
+              </button>
               <button onClick={() => setShowQR(null)}
                 style={{ flex:1, padding:'9px', background:DARK, color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 Fechar
               </button>
             </div>
           </div>
-        </div>
       )}
 
       {/* HEADER */}
