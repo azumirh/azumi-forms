@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import Head from 'next/head'
 import { supabase } from '../lib/supabase'
 
 const DARK = '#031D38'
 const HDR = `linear-gradient(135deg,#031D38 0%,#052E5A 60%,#0A3F7A 100%)`
-
 const FORM_TYPES = ['Pesquisa', 'Questionário', 'Avaliação', 'Diagnóstico', 'Outro']
 
 const Logo = () => (
@@ -32,6 +31,25 @@ function gerarProtocolo() {
   return `AZ-${ano}${mes}-${rand}`
 }
 
+function downloadCard(name: string, onDone: () => void) {
+  const el = document.getElementById('qr-card-inner')
+  if (!el) return
+  const load = () => {
+    ;(window as any).html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' }).then((canvas: any) => {
+      const link = document.createElement('a')
+      link.download = `card-${name}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+      onDone()
+    })
+  }
+  if ((window as any).html2canvas) { load(); return }
+  const s = document.createElement('script')
+  s.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
+  s.onload = load
+  document.head.appendChild(s)
+}
+
 export default function Admin() {
   const [auth, setAuth] = useState(false)
   const [password, setPassword] = useState('')
@@ -41,7 +59,6 @@ export default function Admin() {
   const [view, setView] = useState<'list'|'new'|'responses'>('list')
   const [selectedFormId, setSelectedFormId] = useState<string|null>(null)
   const [responses, setResponses] = useState<any[]>([])
-
   const [fName, setFName] = useState('')
   const [fType, setFType] = useState('Pesquisa')
   const [fClient, setFClient] = useState('')
@@ -51,7 +68,6 @@ export default function Admin() {
   const [fBgColor, setFBgColor] = useState('#031D38')
   const [fWelcome, setFWelcome] = useState('Este formulário foi preparado pela Azumi RH. Sua participação é muito importante!')
   const [questions, setQuestions] = useState<any[]>([])
-
   const [qType, setQType] = useState('text')
   const [qText, setQText] = useState('')
   const [qOpts, setQOpts] = useState('')
@@ -59,14 +75,14 @@ export default function Admin() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
   const [showQR, setShowQR] = useState<any>(null)
+  const [downloading, setDownloading] = useState(false)
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2800) }
 
   function handleLogin() {
     const pwd = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'azumi2024'
-    if (password === pwd) {
-      setAuth(true); loadForms()
-    } else { setAuthError('Senha incorreta.') }
+    if (password === pwd) { setAuth(true); loadForms() }
+    else { setAuthError('Senha incorreta.') }
   }
 
   async function loadForms() {
@@ -87,8 +103,7 @@ export default function Admin() {
       logo_url: fLogoUrl || null,
       welcome_message: fWelcome || null,
       bg_color: fBgColor || '#031D38',
-      form_type: fType,
-      protocolo,
+      form_type: fType, protocolo,
       created_by: adminName || 'Admin',
     })
     setSaving(false)
@@ -189,54 +204,50 @@ export default function Admin() {
 
       {/* QR MODAL */}
       {showQR && (
-        <div id="qr-card" style={{ background:'#fff', borderRadius:16, overflow:'hidden', maxWidth:380, width:'100%', margin:16 }} onClick={e => e.stopPropagation()}>
-            <div style={{ background:HDR, padding:'18px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <div>
-                <div style={{ color:'#fff', fontWeight:700, fontSize:15 }}>{showQR.name}</div>
-                <div style={{ color:'rgba(147,197,253,.8)', fontSize:11, marginTop:2 }}>{showQR.client} · {showQR.form_type || 'Formulário'}</div>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.65)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }} onClick={() => setShowQR(null)}>
+          <div id="qr-card" style={{ background:'#fff', borderRadius:16, overflow:'hidden', maxWidth:380, width:'100%', margin:16 }} onClick={e => e.stopPropagation()}>
+
+            {/* Parte que vai na imagem */}
+            <div id="qr-card-inner">
+              <div style={{ background:HDR, padding:'18px 24px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ color:'#fff', fontWeight:700, fontSize:15 }}>{showQR.name}</div>
+                  <div style={{ color:'rgba(147,197,253,.8)', fontSize:11, marginTop:2 }}>{showQR.client} · {showQR.form_type || 'Formulário'}</div>
+                </div>
+                <Logo/>
               </div>
-              <Logo/>
-            </div>
-            {showQR.logo_url && (
-              <div style={{ background:'#f8f9fb', padding:'12px 24px', borderBottom:'1px solid #EDEDED', display:'flex', alignItems:'center', gap:10 }}>
-                <img src={showQR.logo_url} alt="Logo" style={{ height:32, objectFit:'contain' }}/>
-                <span style={{ fontSize:11, color:'#778082' }}>{showQR.client}</span>
+              {showQR.logo_url && (
+                <div style={{ background:'#f8f9fb', padding:'12px 24px', borderBottom:'1px solid #EDEDED', display:'flex', alignItems:'center', gap:10 }}>
+                  <img src={showQR.logo_url} alt="Logo" style={{ height:32, objectFit:'contain' }}/>
+                  <span style={{ fontSize:11, color:'#778082' }}>{showQR.client}</span>
+                </div>
+              )}
+              <div style={{ padding:'20px 24px', textAlign:'center', background:'#fff' }}>
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(baseUrl+'/forms/'+showQR.id)}`}
+                  alt="QR Code" style={{ borderRadius:8, width:200, height:200, border:'1px solid #EDEDED' }}/>
+                <div style={{ marginTop:10, fontSize:11, color:'#778082', wordBreak:'break-all', fontFamily:'monospace' }}>{baseUrl}/forms/{showQR.id}</div>
               </div>
-            )}
-            <div style={{ padding:'20px 24px', textAlign:'center' }}>
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(baseUrl+'/forms/'+showQR.id)}`}
-                alt="QR Code" style={{ borderRadius:8, width:200, height:200, border:'1px solid #EDEDED' }}/>
-              <div style={{ marginTop:10, fontSize:11, color:'#778082', wordBreak:'break-all', fontFamily:'monospace' }}>{baseUrl}/forms/{showQR.id}</div>
-              <div style={{ marginTop:12, fontSize:12, color:'#034C8B', fontWeight:600 }}>Sua participação é muito importante!</div>
-              <div style={{ fontSize:11, color:'#778082', marginTop:4 }}>Em caso de dúvidas, procure a Azumi RH ou seu gestor.</div>
+              {/* Footer azul — sempre visível no card */}
+              <div style={{ background:HDR, padding:'14px 24px', textAlign:'center' }}>
+                <div style={{ color:'#fff', fontWeight:700, fontSize:13 }}>Sua participação é muito importante!</div>
+                <div style={{ color:'rgba(147,197,253,.8)', fontSize:11, marginTop:3 }}>Em caso de dúvidas, procure a Azumi RH ou seu gestor.</div>
+              </div>
             </div>
-            <div style={{ padding:'0 24px 20px', display:'flex', gap:8 }}>
+
+            {/* Botões — ficam fora da imagem */}
+            <div style={{ padding:'14px 24px', display:'flex', gap:8, background:'#fff' }}>
               <button onClick={() => { navigator.clipboard.writeText(`${baseUrl}/forms/${showQR.id}`); showToast('Link copiado!'); }}
                 style={{ flex:1, padding:'9px', background:'#e9f2ff', color:'#034C8B', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 Copiar link
               </button>
-              <button onClick={() => {
-                const el = document.getElementById('qr-card')
-                if (!el) return
-                const script = document.createElement('script')
-                script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
-                script.onload = () => {
-                  ;(window as any).html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' }).then((canvas: any) => {
-                    const link = document.createElement('a')
-                    link.download = `card-${showQR.name}.png`
-                    link.href = canvas.toDataURL('image/png')
-                    link.click()
-                    showToast('Card baixado!')
-                  })
-                }
-                if (!(window as any).html2canvas) {
-                  document.head.appendChild(script)
-                } else {
-                  script.onload(null as any)
-                }
-              }}
+              <button
+                disabled={downloading}
+                onClick={() => {
+                  setDownloading(true)
+                  downloadCard(showQR.name, () => { setDownloading(false); showToast('Card baixado!') })
+                }}
                 style={{ flex:1, padding:'9px', background:'#f3f0ff', color:'#5B21B6', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-                Baixar card
+                {downloading ? 'Baixando...' : 'Baixar card'}
               </button>
               <button onClick={() => setShowQR(null)}
                 style={{ flex:1, padding:'9px', background:DARK, color:'#fff', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
@@ -244,6 +255,7 @@ export default function Admin() {
               </button>
             </div>
           </div>
+        </div>
       )}
 
       {/* HEADER */}
