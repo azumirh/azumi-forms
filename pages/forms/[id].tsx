@@ -149,19 +149,49 @@ setSubmitted(true)
     </div>
   )
 
-  if (submitted) return (
-    <div style={{ minHeight:'100vh', background:'#f0f2f7', display:'flex', alignItems:'center', justifyContent:'center' }}>
+if (submitted) return (
+    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#031D38 0%,#052E5A 60%,#0A3F7A 100%)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <Head><title>Obrigado · Azumi RH</title></Head>
-      <div style={{ maxWidth:540, width:'100%', margin:'0 16px' }}>
-        <Header/>
-        <div style={{ background:'#fff', borderRadius:'0 0 12px 12px', padding:'40px 28px', textAlign:'center' }}>
-          <div style={{ width:60, height:60, borderRadius:'50%', background:'#e9faf2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          </div>
-          <div style={{ fontSize:18, fontWeight:700, marginBottom:8 }}>Resposta enviada com sucesso</div>
-          <div style={{ fontSize:13, color:'#778082', lineHeight:1.7 }}>Obrigado. Suas respostas foram registradas pela <strong>Azumi RH</strong>.</div>
-          <div style={{ marginTop:24, fontSize:10, color:'#aaa', fontFamily:'monospace' }}>contato@azumirh.com.br · azumirh.com.br</div>
+      <div style={{ maxWidth:480, width:'100%', textAlign:'center' }}>
+        <svg width="52" height="42" viewBox="0 0 120 96" fill="none" style={{ margin:'0 auto 20px', display:'block' }}>
+          <defs>
+            <linearGradient id="lgs" x1="0" y1="0" x2="120" y2="96" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#4A90D9"/><stop offset="100%" stopColor="#6EB3F7"/>
+            </linearGradient>
+          </defs>
+          <circle cx="44" cy="48" r="34" fill="url(#lgs)" opacity=".95"/>
+          <circle cx="76" cy="48" r="34" fill="url(#lgs)" opacity=".7"/>
+        </svg>
+        <div style={{ fontFamily:'Poppins,sans-serif', fontWeight:600, fontSize:28, color:'#fff', letterSpacing:'-.01em', marginBottom:2 }}>azumi<span style={{ fontStyle:'italic', fontWeight:400, color:'#93C5FD' }}>RH</span></div>
+        <div style={{ width:40, height:2, background:'linear-gradient(90deg,#4A90D9,#6EB3F7)', borderRadius:100, margin:'16px auto 24px' }}></div>
+        <div style={{ width:60, height:60, borderRadius:'50%', background:'rgba(255,255,255,.1)', border:'2px solid rgba(255,255,255,.2)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
+        <div style={{ fontSize:22, fontWeight:700, color:'#fff', marginBottom:10 }}>Resposta enviada!</div>
+        <div style={{ fontSize:14, color:'rgba(147,197,253,.85)', lineHeight:1.75, marginBottom:32 }}>
+          Obrigado pela sua participação. Suas respostas foram registradas com sucesso pela <strong style={{ color:'#fff' }}>Azumi RH</strong>.
+        </div>
+        <div style={{ background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.12)', borderRadius:12, padding:'20px 24px', marginBottom:24 }}>
+          <div style={{ fontSize:11, color:'rgba(147,197,253,.7)', fontFamily:'monospace', letterSpacing:'.1em', textTransform:'uppercase', marginBottom:14 }}>Siga a Azumi RH</div>
+          <div style={{ display:'flex', justifyContent:'center', gap:12, flexWrap:'wrap' }}>
+            <a href="https://instagram.com/azumirh" target="_blank" rel="noreferrer"
+              style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.15)', borderRadius:100, padding:'8px 16px', color:'#fff', textDecoration:'none', fontSize:13, fontWeight:600 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+              @azumirh
+            </a>
+            <a href="https://www.linkedin.com/company/azumirh/" target="_blank" rel="noreferrer"
+              style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.15)', borderRadius:100, padding:'8px 16px', color:'#fff', textDecoration:'none', fontSize:13, fontWeight:600 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+              LinkedIn
+            </a>
+            <a href="https://azumirh.com.br" target="_blank" rel="noreferrer"
+              style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.15)', borderRadius:100, padding:'8px 16px', color:'#fff', textDecoration:'none', fontSize:13, fontWeight:600 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              azumirh.com.br
+            </a>
+          </div>
+        </div>
+        <div style={{ fontSize:10, color:'rgba(147,197,253,.5)', fontFamily:'monospace' }}>contato@azumirh.com.br · azumirh.com.br</div>
       </div>
     </div>
   )
