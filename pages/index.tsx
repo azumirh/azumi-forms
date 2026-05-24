@@ -215,16 +215,25 @@ export default function Admin() {
                 style={{ flex:1, padding:'9px', background:'#e9f2ff', color:'#034C8B', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 Copiar link
               </button>
-              <button onClick={async () => {
+              <button onClick={() => {
                 const el = document.getElementById('qr-card')
                 if (!el) return
-                const { default: html2canvas } = await import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js' as any)
-                const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' })
-                const link = document.createElement('a')
-                link.download = `card-${showQR.name}.png`
-                link.href = canvas.toDataURL('image/png')
-                link.click()
-                showToast('Card baixado!')
+                const script = document.createElement('script')
+                script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'
+                script.onload = () => {
+                  ;(window as any).html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#fff' }).then((canvas: any) => {
+                    const link = document.createElement('a')
+                    link.download = `card-${showQR.name}.png`
+                    link.href = canvas.toDataURL('image/png')
+                    link.click()
+                    showToast('Card baixado!')
+                  })
+                }
+                if (!(window as any).html2canvas) {
+                  document.head.appendChild(script)
+                } else {
+                  script.onload(null as any)
+                }
               }}
                 style={{ flex:1, padding:'9px', background:'#f3f0ff', color:'#5B21B6', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 Baixar card
