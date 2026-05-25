@@ -19,6 +19,27 @@ const AzumiLogo = () => (
   </div>
 )
 
+// Renderiza campo de texto: se contém HTML usa dangerouslySetInnerHTML, senão white-space:pre-wrap
+function RichContent({ html, style }: { html: string; style?: React.CSSProperties }) {
+  const isHtml = html && (html.includes('<p') || html.includes('<br') || html.includes('<ul') || html.includes('<b>') || html.includes('<strong') || html.includes('<em') || html.includes('<u>'))
+  if (isHtml) {
+    return (
+      <>
+        <style>{`
+          .rich-content p { margin: 0 0 8px 0; }
+          .rich-content p:last-child { margin-bottom: 0; }
+          .rich-content ul { margin: 4px 0 8px 18px; padding: 0; }
+          .rich-content li { margin-bottom: 4px; }
+          .rich-content br { display: block; content: ''; margin-bottom: 4px; }
+        `}</style>
+        <div className="rich-content" style={style} dangerouslySetInnerHTML={{ __html: html }} />
+      </>
+    )
+  }
+  // Legado: texto puro — preserva quebras de linha
+  return <div style={{ ...style, whiteSpace: 'pre-wrap' }}>{html}</div>
+}
+
 export default function FormPage() {
   const router = useRouter()
   const { id } = router.query as { id: string }
@@ -221,7 +242,10 @@ export default function FormPage() {
             <div style={{ padding:'22px 22px 20px', textAlign:'center' }}>
               <div style={{ fontSize:26, marginBottom:8 }}>👋</div>
               <div style={{ fontSize:17, fontWeight:700, color:'#031D38', marginBottom:10 }}>Bem-vindo(a)!</div>
-              <div style={{ fontSize:14, color:'#555', lineHeight:1.75, marginBottom:18 }}>{form.welcome_message}</div>
+              <RichContent
+                html={form.welcome_message}
+                style={{ fontSize:14, color:'#555', lineHeight:1.75, marginBottom:18, textAlign:'left' }}
+              />
               {form.expiry && (
                 <div style={{ background:'#fff0f0', border:'1.5px solid #ffb3b3', borderRadius:8, padding:'8px 14px', fontSize:12, color:'#b91c1c', fontWeight:600, marginBottom:18 }}>
                   Prazo: até {new Date(form.expiry+'T00:00:00').toLocaleDateString('pt-BR')}
@@ -241,8 +265,11 @@ export default function FormPage() {
         <div style={{ background:'#fff', borderRadius:'0 0 12px 12px', border:'1px solid #EDEDED', borderTop:'none', padding:'18px 16px' }}>
 
           {form?.description && (
-            <div style={{ fontSize:13, color:'#555', marginBottom:20, lineHeight:1.75, background:'#f8f9fb', borderRadius:8, padding:'12px 14px', borderLeft:'3px solid #3B82F6' }}>
-              {form.description}
+            <div style={{ marginBottom:20, background:'#f8f9fb', borderRadius:8, padding:'12px 14px', borderLeft:'3px solid #3B82F6' }}>
+              <RichContent
+                html={form.description}
+                style={{ fontSize:13, color:'#555', lineHeight:1.75 }}
+              />
             </div>
           )}
 
