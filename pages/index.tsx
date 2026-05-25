@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import Head from 'next/head'
 import { supabase } from '../lib/supabase'
 
@@ -50,15 +50,133 @@ function downloadCard(name: string, onDone: () => void) {
   document.head.appendChild(s)
 }
 
+// ─── Rich Text Editor ────────────────────────────────────────────────────────
+interface RichEditorProps {
+  value: string // HTML string
+  onChange: (html: string) => void
+  placeholder?: string
+  minHeight?: number
+}
+
+function RichEditor({ value, onChange, placeholder, minHeight = 80 }: RichEditorProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  const skipSync = useRef(false)
+
+  // Sync value → DOM apenas quando externo muda (não durante digitação)
+  useEffect(() => {
+    if (!ref.current) return
+    if (skipSync.current) { skipSync.current = false; return }
+    if (ref.current.innerHTML !== value) {
+      ref.current.innerHTML = value
+    }
+  }, [value])
+
+  function execCmd(cmd: string, val?: string) {
+    ref.current?.focus()
+    document.execCommand(cmd, false, val)
+    handleInput()
+  }
+
+  function handleInput() {
+    if (!ref.current) return
+    skipSync.current = true
+    onChange(ref.current.innerHTML)
+  }
+
+  // Ao colar: converte texto puro preservando quebras de linha
+  function handlePaste(e: React.ClipboardEvent) {
+    e.preventDefault()
+    const text = e.clipboardData.getData('text/plain')
+    // Converte \n em <br> e preserva parágrafos duplos
+    const html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\r\n/g, '\n')
+      .replace(/\n\n+/g, '</p><p>')
+      .replace(/\n/g, '<br>')
+    const wrapped = `<p>${html}</p>`
+    document.execCommand('insertHTML', false, wrapped)
+    handleInput()
+  }
+
+  const btnStyle = (active?: boolean): React.CSSProperties => ({
+    padding:'3px 9px', border:`1px solid ${active?'#3B82F6':'#EDEDED'}`,
+    borderRadius:5, fontSize:12, cursor:'pointer', fontFamily:'inherit',
+    background: active ? '#eff6ff' : '#fff',
+    color: active ? '#034C8B' : '#555',
+    fontWeight:600, lineHeight:'20px', flexShrink:0,
+  })
+
+  return (
+    <div style={{ border:'1.5px solid #EDEDED', borderRadius:8, overflow:'hidden', background:'#fff' }}>
+      {/* Toolbar */}
+      <div style={{ display:'flex', gap:4, padding:'5px 8px', borderBottom:'1px solid #EDEDED', background:'#f8f9fb', flexWrap:'wrap' }}>
+        <button type="button" style={{ ...btnStyle(), fontWeight:700 }} onMouseDown={e=>{e.preventDefault();execCmd('bold')}}>B</button>
+        <button type="button" style={{ ...btnStyle(), fontStyle:'italic' }} onMouseDown={e=>{e.preventDefault();execCmd('italic')}}>I</button>
+        <button type="button" style={{ ...btnStyle(), textDecoration:'underline' }} onMouseDown={e=>{e.preventDefault();execCmd('underline')}}>U</button>
+        <div style={{ width:1, background:'#EDEDED', margin:'0 2px' }}/>
+        <button type="button" style={btnStyle()} onMouseDown={e=>{e.preventDefault();execCmd('insertUnorderedList')}} title="Lista">• Lista</button>
+        <button type="button" style={btnStyle()} onMouseDown={e=>{e.preventDefault();execCmd('insertHTML','<br><br>')}} title="Quebra de linha">↵ Quebra</button>
+        <div style={{ width:1, background:'#EDEDED', margin:'0 2px' }}/>
+        <button type="button" style={btnStyle()} onMouseDown={e=>{e.preventDefault();execCmd('removeFormat')}} title="Remover formatação">✕ Limpar</button>
+      </div>
+      {/* Área editável */}
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={handleInput}
+        onPaste={handlePaste}
+        style={{
+          minHeight, padding:'10px 12px', fontSize:14,
+          fontFamily:'inherit', color:'#222', outline:'none',
+          lineHeight:1.65, wordBreak:'break-word',
+        }}
+        data-placeholder={placeholder}
+      />
+      <style>{`
+        [contenteditable]:empty:before {
+          content: attr(data-placeholder);
+          color: #aaa;
+          pointer-events: none;
+        }
+        [contenteditable] p { margin: 0 0 8px 0; }
+        [contenteditable] p:last-child { margin-bottom: 0; }
+        [contenteditable] ul { margin: 4px 0 8px 18px; padding:0; }
+        [contenteditable] li { margin-bottom: 3px; }
+      `}</style>
+    </div>
+  )
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function emptyFormState() {
+  return {
+    fName: '',
+    fType: 'Pesquisa',
+    fClient: '',
+    fDesc: '',
+    fExpiry: '',
+    fLogoUrl: '',
+    fBgColor: '#031D38',
+    fWelcome: '<p>Este formulário foi preparado pela Azumi RH. Sua participação é muito importante!</p>',
+    questions: [] as any[],
+  }
+}
+
 export default function Admin() {
   const [auth, setAuth] = useState(false)
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
   const [adminName, setAdminNameState] = useState('')
   const [forms, setForms] = useState<any[]>([])
-  const [view, setView] = useState<'list'|'new'|'responses'>('list')
+  const [view, setView] = useState<'list'|'new'|'edit'|'responses'>('list')
+  const [editingFormId, setEditingFormId] = useState<string|null>(null)
   const [selectedFormId, setSelectedFormId] = useState<string|null>(null)
   const [responses, setResponses] = useState<any[]>([])
+
+  // Form fields
   const [fName, setFName] = useState('')
   const [fType, setFType] = useState('Pesquisa')
   const [fClient, setFClient] = useState('')
@@ -66,8 +184,9 @@ export default function Admin() {
   const [fExpiry, setFExpiry] = useState('')
   const [fLogoUrl, setFLogoUrl] = useState('')
   const [fBgColor, setFBgColor] = useState('#031D38')
-  const [fWelcome, setFWelcome] = useState('Este formulário foi preparado pela Azumi RH. Sua participação é muito importante!')
+  const [fWelcome, setFWelcome] = useState('<p>Este formulário foi preparado pela Azumi RH. Sua participação é muito importante!</p>')
   const [questions, setQuestions] = useState<any[]>([])
+
   const [qType, setQType] = useState('text')
   const [qText, setQText] = useState('')
   const [qOpts, setQOpts] = useState('')
@@ -90,29 +209,71 @@ export default function Admin() {
     if (data) setForms(data)
   }
 
+  function resetFormFields() {
+    const s = emptyFormState()
+    setFName(s.fName); setFType(s.fType); setFClient(s.fClient)
+    setFDesc(s.fDesc); setFExpiry(s.fExpiry); setFLogoUrl(s.fLogoUrl)
+    setFBgColor(s.fBgColor); setFWelcome(s.fWelcome); setQuestions(s.questions)
+  }
+
+  function loadFormIntoFields(f: any) {
+    setFName(f.name || '')
+    setFType(f.form_type || 'Pesquisa')
+    setFClient(f.client || '')
+    setFDesc(f.description || '')
+    setFExpiry(f.expiry || '')
+    setFLogoUrl(f.logo_url || '')
+    setFBgColor(f.bg_color || '#031D38')
+    // Suporte a campo legado (texto puro → wrapa em <p>)
+    const raw = f.welcome_message || ''
+    setFWelcome(raw.startsWith('<') ? raw : raw ? `<p>${raw.replace(/\n/g,'<br>')}</p>` : '<p>Este formulário foi preparado pela Azumi RH. Sua participação é muito importante!</p>')
+    setQuestions(f.questions || [])
+  }
+
   async function saveForm() {
     if (!fName.trim()) return showToast('Dê um nome ao formulário!')
     if (!fClient.trim()) return showToast('Informe o cliente!')
     if (!questions.length) return showToast('Adicione pelo menos uma pergunta!')
     setSaving(true)
-    const id = 'f_' + Date.now()
-    const protocolo = gerarProtocolo()
-    const { error } = await supabase.from('forms').insert({
-      id, name: fName, client: fClient, description: fDesc,
-      expiry: fExpiry || null, questions,
-      logo_url: fLogoUrl || null,
-      welcome_message: fWelcome || null,
-      bg_color: fBgColor || '#031D38',
-      form_type: fType, protocolo,
-      created_by: adminName || 'Admin',
-    })
-    setSaving(false)
-    if (error) return showToast('Erro ao salvar: ' + error.message)
-    showToast(`Criado! Protocolo: ${protocolo}`)
-    setFName(''); setFClient(''); setFDesc(''); setFExpiry('')
-    setFLogoUrl(''); setFBgColor('#031D38'); setQuestions([])
-    setFWelcome('Este formulário foi preparado pela Azumi RH. Sua participação é muito importante!')
-    setView('list'); loadForms()
+
+    if (view === 'edit' && editingFormId) {
+      // UPDATE — não toca em respostas, não regenera protocolo
+      const { error } = await supabase.from('forms').update({
+        name: fName,
+        client: fClient,
+        description: fDesc,
+        expiry: fExpiry || null,
+        questions,
+        logo_url: fLogoUrl || null,
+        welcome_message: fWelcome || null,
+        bg_color: fBgColor || '#031D38',
+        form_type: fType,
+      }).eq('id', editingFormId)
+      setSaving(false)
+      if (error) return showToast('Erro ao salvar: ' + error.message)
+      showToast('Formulário atualizado!')
+      setEditingFormId(null)
+    } else {
+      // INSERT novo
+      const id = 'f_' + Date.now()
+      const protocolo = gerarProtocolo()
+      const { error } = await supabase.from('forms').insert({
+        id, name: fName, client: fClient, description: fDesc,
+        expiry: fExpiry || null, questions,
+        logo_url: fLogoUrl || null,
+        welcome_message: fWelcome || null,
+        bg_color: fBgColor || '#031D38',
+        form_type: fType, protocolo,
+        created_by: adminName || 'Admin',
+      })
+      setSaving(false)
+      if (error) return showToast('Erro ao salvar: ' + error.message)
+      showToast(`Criado! Protocolo: ${protocolo}`)
+    }
+
+    resetFormFields()
+    setView('list')
+    loadForms()
   }
 
   function addQuestion() {
@@ -139,6 +300,12 @@ export default function Admin() {
     setSelectedFormId(form.id)
     const { data } = await supabase.from('responses').select('*').eq('form_id', form.id).order('submitted_at', { ascending: false })
     setResponses(data || []); setView('responses')
+  }
+
+  function openEdit(form: any) {
+    setEditingFormId(form.id)
+    loadFormIntoFields(form)
+    setView('edit')
   }
 
   async function exportCSV(formId: string) {
@@ -178,6 +345,8 @@ export default function Admin() {
     fontSize:11, fontWeight:700, letterSpacing:'.1em',
     textTransform:'uppercase' as const, color:'#034C8B', marginBottom:12
   }
+
+  const isEditMode = view === 'edit'
 
   if (!auth) return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f0f2f7', padding:16 }}>
@@ -273,13 +442,13 @@ export default function Admin() {
         </div>
         <div style={{ display:'flex', gap:6, flexShrink:0 }}>
           {view !== 'list' && (
-            <button onClick={() => setView('list')} style={{ background:'rgba(255,255,255,.12)', color:'#fff', border:'1px solid rgba(255,255,255,.2)', borderRadius:100, padding:'8px 14px', fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const }}>← Voltar</button>
+            <button onClick={() => { setView('list'); setEditingFormId(null); }} style={{ background:'rgba(255,255,255,.12)', color:'#fff', border:'1px solid rgba(255,255,255,.2)', borderRadius:100, padding:'8px 14px', fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const }}>← Voltar</button>
           )}
           {view === 'list' && (
-            <button onClick={() => { setView('new'); setQuestions([]); }} style={{ background:'rgba(255,255,255,.15)', color:'#fff', border:'1px solid rgba(255,255,255,.25)', borderRadius:100, padding:'8px 14px', fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const }}>+ Novo</button>
+            <button onClick={() => { resetFormFields(); setView('new'); }} style={{ background:'rgba(255,255,255,.15)', color:'#fff', border:'1px solid rgba(255,255,255,.25)', borderRadius:100, padding:'8px 14px', fontWeight:600, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const }}>+ Novo</button>
           )}
-          {view === 'new' && (
-            <button onClick={saveForm} disabled={saving} style={{ background:'#fff', color:DARK, border:'none', borderRadius:100, padding:'8px 14px', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const }}>{saving ? 'Salvando...' : 'Salvar'}</button>
+          {(view === 'new' || view === 'edit') && (
+            <button onClick={saveForm} disabled={saving} style={{ background:'#fff', color:DARK, border:'none', borderRadius:100, padding:'8px 14px', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' as const }}>{saving ? 'Salvando...' : isEditMode ? 'Atualizar' : 'Salvar'}</button>
           )}
         </div>
       </div>
@@ -319,7 +488,8 @@ export default function Admin() {
                 <button onClick={() => viewResponses(f)} style={{ padding:'9px 4px', background:'#e9faf2', color:'#0F6E56', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Ver respostas</button>
                 <button onClick={() => exportCSV(f.id)} style={{ padding:'9px 4px', background:'#fff8e1', color:'#7c6200', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Baixar CSV</button>
                 <button onClick={() => setShowQR(f)} style={{ padding:'9px 4px', background:'#f3f0ff', color:'#5B21B6', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>QR Code / Card</button>
-                <button onClick={() => deleteForm(f.id)} style={{ padding:'9px 4px', background:'#fef2f2', color:'#b91c1c', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit', gridColumn:'1/-1' }}>Apagar</button>
+                <button onClick={() => openEdit(f)} style={{ padding:'9px 4px', background:'#fff7ed', color:'#92400e', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>✏️ Editar</button>
+                <button onClick={() => deleteForm(f.id)} style={{ padding:'9px 4px', background:'#fef2f2', color:'#b91c1c', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>Apagar</button>
               </div>
             </div>
           ))}
@@ -327,9 +497,14 @@ export default function Admin() {
         </div>
       )}
 
-      {/* NEW FORM */}
-      {view === 'new' && (
+      {/* NEW / EDIT FORM */}
+      {(view === 'new' || view === 'edit') && (
         <div>
+          {isEditMode && (
+            <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:10, padding:'10px 14px', marginBottom:12, fontSize:13, color:'#92400e', fontWeight:600 }}>
+              ✏️ Editando formulário — as respostas existentes não serão afetadas.
+            </div>
+          )}
           <div style={{ background:'#fff', borderRadius:12, padding:16, marginBottom:12, border:'1px solid #EDEDED' }}>
             <div style={sectionTitle}>Identificação</div>
             <label style={lbl}>Nome do formulário</label>
@@ -341,7 +516,12 @@ export default function Admin() {
               {FORM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <label style={lbl}>Instrução para o respondente</label>
-            <textarea style={{ ...inp, minHeight:80, resize:'vertical' as const }} value={fDesc} onChange={e=>setFDesc(e.target.value)} placeholder="Ex.: Informe abaixo quais políticas você leu."/>
+            <RichEditor
+              value={fDesc}
+              onChange={setFDesc}
+              placeholder="Ex.: Informe abaixo quais políticas você leu..."
+              minHeight={100}
+            />
             <label style={lbl}>Data limite (opcional)</label>
             <input style={inp} type="date" value={fExpiry} onChange={e=>setFExpiry(e.target.value)}/>
             <label style={lbl}>URL da logo do cliente (opcional)</label>
@@ -352,7 +532,12 @@ export default function Admin() {
               <input style={{ ...inp }} value={fBgColor} onChange={e=>setFBgColor(e.target.value)} placeholder="#031D38"/>
             </div>
             <label style={lbl}>Mensagem de boas-vindas (pop-up)</label>
-            <textarea style={{ ...inp, minHeight:70, resize:'vertical' as const }} value={fWelcome} onChange={e=>setFWelcome(e.target.value)}/>
+            <RichEditor
+              value={fWelcome}
+              onChange={setFWelcome}
+              placeholder="Mensagem de boas-vindas..."
+              minHeight={80}
+            />
           </div>
 
           <div style={{ background:'#fff', borderRadius:12, padding:16, border:'1px solid #EDEDED' }}>
@@ -391,7 +576,9 @@ export default function Admin() {
               <button onClick={addQuestion} style={{ marginTop:12, width:'100%', padding:'12px', background:'linear-gradient(135deg,#031D38,#3B82F6)', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'inherit' }}>+ Adicionar pergunta</button>
             </div>
           </div>
-          <button onClick={saveForm} disabled={saving} style={{ marginTop:14, width:'100%', padding:'14px', background:HDR, color:'#fff', border:'none', borderRadius:12, fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'inherit' }}>{saving ? 'Salvando...' : 'Salvar e gerar link'}</button>
+          <button onClick={saveForm} disabled={saving} style={{ marginTop:14, width:'100%', padding:'14px', background:HDR, color:'#fff', border:'none', borderRadius:12, fontWeight:700, fontSize:15, cursor:'pointer', fontFamily:'inherit' }}>
+            {saving ? 'Salvando...' : isEditMode ? '💾 Atualizar formulário' : 'Salvar e gerar link'}
+          </button>
         </div>
       )}
 
